@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style> /* set the CSS */
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 2px;
+}
+
+</style>
+<body>
+
+<!-- load the d3.js library -->     
+<script src="lib/d3.v4.js"></script>
+<script>
+/* http://www2.ess.ucla.edu/~jewitt/tisserand.html */
+
+// set the dimensions and margins of the graph
+var margin = {top: 20, right: 20, bottom: 30, left: 50},
+    width = 800 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom,
+    deg2rad = Math.PI / 180
+    // Semimajor axis of the perturbing body (Jupiter)
+    ap = 5.204, 
+    limits = {
+      a: {min: 1, max: 10, def: 3},       // semimajor axis 1...10 AU
+      e: {min: 0, max: 1, def: 0.1},      // eccentricity 0...1
+      i: {min: 0, max: Math.PI, def: 0.1} // inclination 0...Pi rad
+    },
+    selected = [];
+    palette = ["#fff5eb","#fee6ce","#fdd0a2","#fdae6b","#fd8d3c","#f16913","#d94801","#a63603","#7f2704","#6f1802"];
+
+// set the ranges
+var x = d3.scaleLinear().range([0, width]),
+    y = d3.scaleLinear().range([height, 0]),
+    z = d3.scaleOrdinal(palette);
+
+// define the line
+var valueline = d3.line()
+    .x(function(d) { return x(d.x); })
+    .y(function(d) { return y(d.y); });
+
+//var data = generate_ai();
+    
+// append the svg obgect to the body of the page
+// appends a 'group' element to 'svg'
+// moves the 'group' element to the top left margin
+var svg = d3.select("body").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom),
+    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  
+
+var ctrl = d3.select("body").append("div").attr("class", "ctrl");
+
+ctrl.append("input").attr("type", "button").attr("value", "a / e").attr("id", "ae").on("click", function() {
+  update(generate("a", "e"));
+});
+ctrl.append("input").attr("type", "button").attr("value", "a / i").attr("id", "ai").on("click", function() {
+  update(generate("a", "i"));
+});
+ctrl.append("input").attr("type", "button").attr("value", "i / e").attr("id", "ie").on("click", function() {
+  update(generate("i", "e"));
+});
+ctrl.append("input").attr("type", "button").attr("value", "e / a").attr("id", "ea").on("click", function() {
+  update(generate("e", "a"));
+});
+ctrl.append("input").attr("type", "button").attr("value", "e / i").attr("id", "ei").on("click", function() {
+  update(generate("e", "i"));
+});
+ctrl.append("input").attr("type", "button").attr("value", "i / a").attr("id", "ia").on("click", function() {
+  update(generate("i", "a"));
+});
+ctrl.append("input").attr("type", "range").attr("min", 0).attr("max", 1).attr("step", 0.05).attr("id", "third").attr("value", 0).on("change", function() {
+  update(generate(selected[0], selected[1]));
+});
+
+update(generate("a", "i"));
+
+function update(data) {
+  g.selectAll("*").remove();
+
+  // Scale the range of the data
+  x.domain([0, d3.max(data, function(c) { return d3.max(c.values, function(d) { return d.x; }) }) ]);
+  y.domain([d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.y; }) }), 
+            d3.max(data, function(c) { return d3.max(c.values, function(d) { return d.y; }) }) ]);
+  z.domain(data.map( function(c) { return c.id; }));
+
+  
+  //vlines.data(data).enter();
+  vlines = g.selectAll(".vlines")
+    .data(data)
+    .enter().append("g")
+    .attr("class", "vline");    
+
+  vlines.append("path")
+    .attr("class", "line")
+    .attr("d",  function(d) { return valueline(d.values); })
+    .style("stroke", function(d) { return z(d.id); });
+
+  vlines.append("text")
+      .datum(function(d) { return {id: d.id, value: d.values[0]}; })
+      .attr("transform", function(d) { return "translate(" + x(d.value.x) + "," + y(d.value.y) + ")"; })
+      .attr("x", 3)
+      .attr("dy", "0.35em")
+      .style("font", "10px sans-serif")
+      .text(function(d) { if (selected[1] === "i") return Round(d.id * 180 / Math.PI, 1); return Round(d.id, 1); });
+
+  // Add the X Axis
+  g.append("g")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x));
+
+  // Add the Y Axis
+  g.append("g").call(d3.axisLeft(y));
+
+}
+
+function generate(prime, sec) {
+  var res = [], tiss, n = 0,
+      ls = limits[sec],
+      lp = limits[prime],
+      curr = {a:3, i:0.1, e:0.1};
+  selected = [prime, sec, "aei".replace(prime, '').replace(sec, '')];
+  curr[selected[2]] = $("third").value;
+  for (var j=ls.min; j<=ls.max; j+=(ls.max-ls.min)/10) {
+    res[n] = {id:j, values:[]};
+    curr[sec] = j;
+    for (var i=lp.min; i<lp.max; i+=(lp.max-lp.min)/100) {
+      curr[prime] = i;
+      tiss = tisserand(curr);
+      if (selected[0] === "i")
+        res[n].values.push({x:i*180/Math.PI, y:tiss});
+      else
+        res[n].values.push({x:i, y:tiss});
+    }
+    n++;
+  }
+  return res;
+}
+
+function adapt(what) {
+  var node = $("third"),
+      lt = limits[selected[2]];
+
+  node.min = lt.min;
+  node.max = lt.max;
+      
+      
+}
+
+//a vs i, a vs e, i vs e
+function tisserand(bdy) {
+  return ap / bdy.a + 2 * Math.sqrt(bdy.a / ap * (1 - bdy.e*bdy.e)) * Math.cos(bdy.i);
+}
+
+function Round(x, dg) { return(Math.round(Math.pow(10,dg)*x)/Math.pow(10,dg)); }
+function $(id) { return document.getElementById(id); }
+
+</script>
+</body>

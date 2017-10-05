@@ -1,0 +1,23 @@
+{
+  "name": "tisserand.parameter",
+  "version": "0.1.0",
+  "description": "An intercative exploration of the Tisserand parameter",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ofrohn/tisserand-parameter.git"
+  },
+  "keywords": [
+    "Tisserand",
+    "D3"
+  ],
+  "author": "Olaf Frohn",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/ofrohn/tisserand-parameter/issues"
+  },
+  "homepage": "https://github.com/ofrohn/tisserand-parameter#readme"
+}
