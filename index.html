@@ -1,7 +1,8 @@
 <!DOCTYPE html>
+<head>
 <meta charset="utf-8">
-<style> /* set the CSS */
-
+<title>Tisserand parameter</title>
+<style>
 .line {
   fill: none;
   stroke: steelblue;
@@ -9,9 +10,7 @@
 }
 
 </style>
-<body>
-
-<!-- load the d3.js library -->     
+</head><body>
 <script src="lib/d3.v4.js"></script>
 <script>
 /* http://www2.ess.ucla.edu/~jewitt/tisserand.html */
@@ -24,12 +23,12 @@ var margin = {top: 20, right: 20, bottom: 30, left: 50},
     // Semimajor axis of the perturbing body (Jupiter)
     ap = 5.204, 
     limits = {
-      a: {min: 1, max: 10, def: 3},       // semimajor axis 1...10 AU
-      e: {min: 0, max: 1, def: 0.1},      // eccentricity 0...1
-      i: {min: 0, max: Math.PI, def: 0.1} // inclination 0...Pi rad
+      a: {min: 1, max: 10, def: 3, y0:-2, y1:6},       // semimajor axis 1...10 AU
+      e: {min: 0, max: 1, def: 0.1, y0:-2.5, y1:6.5},      // eccentricity 0...1
+      i: {min: 0, max: Math.PI, def: 0.1, y0:-2.5, y1:6.5} // inclination 0...Pi rad
     },
     selected = [];
-    palette = ["#fff5eb","#fee6ce","#fdd0a2","#fdae6b","#fd8d3c","#f16913","#d94801","#a63603","#7f2704","#6f1802"];
+    palette = ["#fff5eb","#fee6ce","#fdd0a2","#fdae6b","#fd8d3c","#f16913","#d94801","#a63603","#7f2704","#6f1802","#2f0800"];
 
 // set the ranges
 var x = d3.scaleLinear().range([0, width]),
@@ -80,13 +79,6 @@ update(generate("a", "i"));
 
 function update(data) {
   g.selectAll("*").remove();
-
-  // Scale the range of the data
-  x.domain([0, d3.max(data, function(c) { return d3.max(c.values, function(d) { return d.x; }) }) ]);
-  y.domain([d3.min(data, function(c) { return d3.min(c.values, function(d) { return d.y; }) }), 
-            d3.max(data, function(c) { return d3.max(c.values, function(d) { return d.y; }) }) ]);
-  z.domain(data.map( function(c) { return c.id; }));
-
   
   //vlines.data(data).enter();
   vlines = g.selectAll(".vlines")
@@ -123,8 +115,9 @@ function generate(prime, sec) {
       lp = limits[prime],
       curr = {a:3, i:0.1, e:0.1};
   selected = [prime, sec, "aei".replace(prime, '').replace(sec, '')];
+  adapt(selected[2]);
   curr[selected[2]] = $("third").value;
-  for (var j=ls.min; j<=ls.max; j+=(ls.max-ls.min)/10) {
+  for (var j=ls.min; j<ls.max; j+=(ls.max-ls.min)/10) {
     res[n] = {id:j, values:[]};
     curr[sec] = j;
     for (var i=lp.min; i<lp.max; i+=(lp.max-lp.min)/100) {
@@ -137,17 +130,23 @@ function generate(prime, sec) {
     }
     n++;
   }
+  
+  x.domain([0, d3.max(res, function(c) { return d3.max(c.values, function(d) { return d.x; }) }) ]);
+  y.domain([lp.y0, lp.y1]);
+  z.domain(res.map( function(c) { return c.id; }));
+
   return res;
 }
 
 function adapt(what) {
   var node = $("third"),
-      lt = limits[selected[2]];
+      lt = limits[what];
 
   node.min = lt.min;
   node.max = lt.max;
-      
-      
+  node.step = Round((lt.max-lt.min) / 100, 2);
+  if (node.value > lt.max) node.value = lt.max;
+  if (node.value < lt.min) node.value = lt.min;
 }
 
 //a vs i, a vs e, i vs e
