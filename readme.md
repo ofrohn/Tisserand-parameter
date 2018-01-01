@@ -6,7 +6,7 @@ An interactive exploration of it.
 
 Tisserands parameter is an invariant quantity that does (almost) not change through interaction of small bodies with a large perturbing body like Jupiter. It can therefore be used to classiy different types of objects like asteroids with T<sub>J</sub> &gt; 3 and comets with 2 &lt; T<sub>J</sub> &lt; 3.  
 
-A quasi-conserved quantity, that can be thought of as the angular momentum of the perturbed body, normalized to the perturbing body's semi-major axis., where e and i are the perturbed body's eccentricity and inclination in degrees, respectively:  
+A quasi-conserved quantity, that can be thought of as the angular momentum of the perturbed body, normalized to the perturbing body's semi-major axis., where e and i are the perturbed body's orbital eccentricity and inclination against the ecliptic, respectively:  
   
 <code>h = \[a / a<sub>p</sub> * (1 - e<sup>2</sup>)\]<sup>&frac12;</sup> * cos i</code>
 
