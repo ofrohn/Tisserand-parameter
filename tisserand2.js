@@ -21,8 +21,8 @@ var margin = {top: 20, right: 20, bottom: 30, left: 50},
       i: {min: 0, max: Math.PI, def: 0.1, y0:-2.5, y1:6.5, unit:"\u00b0"} // inclination 0...Pi rad
     },
     selected = ["a", "e", "i"],
-    //palette = ["#fff7fb","#ece2f0","#d0d1e6","#a6bddb","#67a9cf","#3690c0","#02818a","#016c59","#014636"];
-    palette = ["#8e0152","#c51b7d","#de77ae","#f1b6da","#fde0ef","#f7f7f7","#e6f5d0","#b8e186","#7fbc41","#4d9221","#276419"];
+    palette1 = ["#004529","#006837","#238443","#41ab5d","#78c679","#addd8e","#d9f0a3","#f7fcb9","#ffffd5"];
+    palette2 = ["#e7f7ff","#deebf7","#c6dbef","#9ecae1","#6baed6","#4292c6","#2171b5","#08519c","#08306b"];
 
 var parnt = "body", node = $("tisserand-chart")
 
@@ -32,7 +32,7 @@ if (node) {
   height = Math.round(node.offsetWidth  / 2)  - margin.top - margin.bottom;
 }
     
-var chart = d3.select(parnt).append("canvas")
+var chart = d3.select(parnt).append("canvas").attr("id", "dataplane")
   .attr("width", width)
   .attr("height", height),
   ctx = chart.node().getContext('2d');  
@@ -40,7 +40,8 @@ var chart = d3.select(parnt).append("canvas")
 // set the ranges
 var x = d3.scaleLinear().range([0, width]),
     y = d3.scaleLinear().range([height, 0]),
-    z = d3.scaleQuantize().range(palette);
+    z1 = d3.scaleQuantize().range(palette1),
+    z2 = d3.scaleQuantize().range(palette2);
 
 
 var svg = d3.select(parnt).append("svg")
@@ -50,6 +51,7 @@ var svg = d3.select(parnt).append("svg")
   
 var ctrl = d3.select(parnt).append("div").attr("class", "ctrl");
 
+var indicator = d3.select(parnt).append("div").attr("id", "indicator");
 
 ctrl.append("input").attr("type", "range").attr("min", 0).attr("max", 1).attr("step", 0.05).attr("id", "third").attr("value", 0).on("change", function() {
   update(generate());
@@ -59,15 +61,17 @@ ctrl.append("label").attr("title", "Set " + selected[2]).attr("id", "lblThird").
 ctrl.append("p");
 ctrl.append("span").text("Show parameter ");
 
-ctrl.append("input").attr("type", "button").attr("value", "Semimajor Axis vs. Inclination").attr("id", "ai").on("click", function() {
+ctrl1 = ctrl.append("div").attr("id", "btns");
+
+ctrl1.append("input").attr("type", "button").attr("value", "Semimajor Axis vs. Inclination").attr("id", "ai").on("click", function() {
   setParam(this.id); update(generate());
 });
-ctrl.append("br");
-ctrl.append("input").attr("type", "button").attr("value", "Semimajor Axis vs. Excentricity").attr("id", "ae").on("click", function() {
+ctrl1.append("br");
+ctrl1.append("input").attr("type", "button").attr("value", "Semimajor Axis vs. Excentricity").attr("id", "ae").on("click", function() {
   setParam(this.id); update(generate());
 });
-ctrl.append("br");
-ctrl.append("input").attr("type", "button").attr("value", "Excentricity vs. Inclination").attr("id", "ei").on("click", function() {
+ctrl1.append("br");
+ctrl1.append("input").attr("type", "button").attr("value", "Excentricity vs. Inclination").attr("id", "ei").on("click", function() {
   setParam(this.id); update(generate());
 });
 ctrl.append("p");
@@ -87,7 +91,29 @@ ctrl.append("input").attr("type", "button").attr("value", "Neptune").attr("id", 
 });
 
 ctrl.append("div").attr("id", "formula");
-$("formula").innerHTML = "<math display='block' xmlns='http://www.w3.org/1998/Math/MathML' mode='inline' mathsize='small'><msub><mi>T</mi><mi>p</mi></msub><mo>=</mo><mfrac><mi class='frm' id='f_ap'>ap</mi><mi class='frm' id='f_a'>a</mi></mfrac> <mo>+</mo><mn>2</mn><msqrt><mfrac><mi class='frm' id='f_a'>a</mi><mi class='frm' id='f_ap'>ap</mi></mfrac><mo>(</mo><mn>1</mn><mo>-</mo> <msup><mi class='frm' id='f_e'>e</mi><mn>2</mn></msup><mo>)</mo></msqrt><mo>cos</mo> <mi class='frm' id='f_i'>i</mi></math>";
+$("formula").innerHTML = "<math display='block' xmlns='http://www.w3.org/1998/Math/MathML' mathsize='small'><msub><mi>T</mi><mi>p</mi></msub><mo>=</mo><mfrac><mi class='frm' id='f_ap'>ap</mi><mi class='frm' id='f_a'>a</mi></mfrac> <mo>+</mo><mn>2</mn><msqrt><mfrac><mi class='frm' id='f_a'>a</mi><mi class='frm' id='f_ap'>ap</mi></mfrac><mo>(</mo><mn>1</mn><mo>-</mo> <msup><mi class='frm' id='f_e'>e</mi><mn>2</mn></msup><mo>)</mo></msqrt><mo>cos</mo> <mi class='frm' id='f_i'>i</mi></math>";
+
+scale = ctrl.append("div").attr("id", "scale");
+scanvas = scale.append("canvas")  
+  .attr("width", 200)
+  .attr("height", 50),
+sctx = scanvas.node().getContext('2d');
+sx = d3.scaleLinear().domain([0, 200]),
+
+chart.on('mousemove', function() {
+  var mouse = d3.mouse(this),
+      mx = mouse[0],
+      my = mouse[1],
+      param = {};
+  param[selected[0]] = x.invert(mx);
+  param[selected[1]] = selected[1] === "i" ? y.invert(my) * Math.PI/180 : y.invert(my);
+  param[selected[2]] = $("third").value * 1;
+  tiss = tisserand(param);
+  d3.select("#indicator").text(Round(tiss, 2)).style("top", px(my + 4)).style("left", px(mx + margin.left + 14));
+});
+
+chart.on('mouseover', function() { d3.select("#indicator").style("display", "block"); });
+chart.on('mouseout', function() { d3.select("#indicator").style("display", "none"); });
 
 hilight();
 update(generate());
@@ -99,7 +125,7 @@ function update(data) {
   data.values.forEach(function(d, i) {
     ctx.beginPath();
     ctx.rect(x(d.x), y(d.y) - dim.dy, dim.w, dim.h);
-    ctx.fillStyle = z(d.t);
+    ctx.fillStyle = heatColor(d.t);
     ctx.fill();
     ctx.closePath();
   });
@@ -142,6 +168,30 @@ function update(data) {
   
   //$("lblSecond").innerHTML = getValue(selected[1], "second");
   $("lblThird").innerHTML = getValue(selected[2], "third");
+  
+  sx.range([z1.domain()[0], z2.domain()[1]]);
+  sctx.font = "10px Arial";
+  sctx.textAlign  = "center";
+  sctx.textBaseline = "top";
+  sctx.lineWidth = 1.0;
+
+  sctx.fillStyle = "#fff";
+  sctx.fillRect(0, 0, scanvas.attr("width"), scanvas.attr("height"));
+  for (var i=0; i<=200; i++) {
+    var tiss = sx(i);
+    sctx.strokeStyle = heatColor(tiss);
+    sctx.beginPath();
+    sctx.moveTo(i, 0);
+    sctx.lineTo(i, 24);
+    sctx.stroke();
+    sctx.closePath();
+  };
+  var diff = Math.round((sx.range()[1] - sx.range()[0]) / 5);
+  for (var i = Math.ceil(sx.range()[0]); i<=Math.floor(sx.range()[1]); i+=diff) {
+    sctx.fillStyle = "#000";
+    sctx.fillText(i, sx.invert(i), 26);
+  }
+
 }
 
 function setPlanet(id) {
@@ -214,16 +264,15 @@ function generate() {
   else
     y.domain([l1.min, l1.max]);
   
-  z.domain([d3.min(res.values, function(c) { return c.t; }), d3.max(res.values, function(c) { return c.t; })]);
-
+  z1.domain([d3.min(res.values, function(c) { return c.t; }), 3]);
+  z2.domain([3, d3.max(res.values, function(c) { return c.t; })]);
+  
   return res;
 }
 
-function generatePalette() {
-   var domain = z.domain(),
-       step = (domain[1] - domain[0]) / 12,
-       res = [];
-       
+function heatColor(v) {
+   if (v < 3) return z1(v);  
+   return z2(v);
 }
  
 function generatePlanet() {
@@ -260,4 +309,4 @@ function tisserand(bdy) {
 
 function Round(x, dg) { return(Math.round(Math.pow(10,dg)*x)/Math.pow(10,dg)); }
 function $(id) { return document.getElementById(id); }
-
+function px(v) { return v + "px"; }
